@@ -1,21 +1,38 @@
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import { OuroQuestSolver } from "@/solvers/ouro-quest";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+
+const TABS = [{ id: "ouro-quest", label: "Ouro Quest" }] as const;
+type TabId = (typeof TABS)[number]["id"];
 
 export function App() {
-  return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
-      </div>
-    </div>
-  )
+	const [activeTab, setActiveTab] = useState<TabId>("ouro-quest");
+
+	return (
+		<div className="flex min-h-svh flex-col items-center p-4 sm:p-6">
+			<div className="flex w-full max-w-md flex-col gap-3">
+				<div className="flex flex-col gap-2">
+					<div className="px-1 text-sm font-medium">Mudae Solvers</div>
+					<div className="flex gap-1">
+						{TABS.map((tab) => (
+							<Button
+								key={tab.id}
+								variant={activeTab === tab.id ? "secondary" : "ghost"}
+								size="sm"
+								onClick={() => setActiveTab(tab.id)}
+							>
+								{tab.label}
+							</Button>
+						))}
+					</div>
+					<Separator />
+				</div>
+
+				{activeTab === "ouro-quest" && <OuroQuestSolver />}
+			</div>
+		</div>
+	);
 }
 
-export default App
+export default App;
