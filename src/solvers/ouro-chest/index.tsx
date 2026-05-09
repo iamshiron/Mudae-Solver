@@ -6,9 +6,9 @@ import {
 	countRevealed,
 	createEmptyGrid,
 } from "../shared/types";
-import { MAX_CLICKS, TOTAL_PURPLES } from "./types";
+import { MAX_CLICKS, OURO_CHEST_LABELS } from "./types";
 import { solve } from "./solver";
-import { OuroQuestGrid } from "./grid";
+import { OuroChestGrid } from "./grid";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -21,16 +21,12 @@ import {
 } from "@/components/ui/card";
 import { ArrowCounterClockwise } from "@phosphor-icons/react";
 
-export function OuroQuestSolver() {
+export function OuroChestSolver() {
 	const [grid, setGrid] = useState<Grid>(createEmptyGrid);
 	const result = useMemo(() => solve(grid), [grid]);
 	const clicks = countRevealed(grid);
 
-	const purples = (() => {
-		let count = 0;
-		for (const row of grid) for (const c of row) if (c === "purple") count++;
-		return count;
-	})();
+	const hasRed = grid.some((row) => row.some((c) => c === "red"));
 
 	const handleCellChange = (row: number, col: number, state: CellState) => {
 		setGrid((prev) => {
@@ -44,45 +40,34 @@ export function OuroQuestSolver() {
 		setGrid(createEmptyGrid());
 	};
 
-	const purplesFound = purples >= 3;
 	const overClicks = clicks > MAX_CLICKS;
-	const allFound = purples >= TOTAL_PURPLES;
 
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Ouro Quest</CardTitle>
+				<CardTitle>Ouro Chest</CardTitle>
 				<CardDescription>
-					Find 3 of 4 purple spheres in 7 clicks. Click tiles to set their
-					revealed state.
+					Find the red sphere in 5 clicks. Colors indicate the tile&apos;s
+					relationship to the red sphere.
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
 				<div className="flex flex-wrap items-center gap-1.5 text-[0.65rem]">
-					{(["blue", "teal", "green", "yellow", "orange"] as CellState[]).map(
+					{(["orange", "yellow", "green", "teal", "blue"] as CellState[]).map(
 						(s) => (
 							<Badge key={s} variant="outline" className="gap-1">
 								<span
 									className="inline-block size-2 rounded-sm"
 									style={{ backgroundColor: CELL_COLORS[s] }}
 								/>
-								{s.charAt(0).toUpperCase() + s.slice(1)}=
-								{s === "blue"
-									? "0"
-									: s === "teal"
-										? "1"
-										: s === "green"
-											? "2"
-											: s === "yellow"
-												? "3"
-												: "4"}
+								{OURO_CHEST_LABELS[s]}
 							</Badge>
 						),
 					)}
 				</div>
 
 				<div className="flex justify-center">
-					<OuroQuestGrid
+					<OuroChestGrid
 						grid={grid}
 						probabilities={result.probabilities}
 						recommendation={result.recommendation}
@@ -96,12 +81,9 @@ export function OuroQuestSolver() {
 					<Badge variant={overClicks ? "destructive" : "outline"}>
 						Clicks: {clicks}/{MAX_CLICKS}
 					</Badge>
-					<Badge variant={purplesFound ? "default" : "secondary"}>
-						Purples: {purples}/{TOTAL_PURPLES}
-					</Badge>
 					<Badge variant="outline">
-						{result.validConfigs.toLocaleString()} valid config
-						{result.validConfigs !== 1 ? "s" : ""}
+						{result.validPositions} valid position
+						{result.validPositions !== 1 ? "s" : ""}
 					</Badge>
 					<Button
 						variant="outline"
@@ -120,9 +102,9 @@ export function OuroQuestSolver() {
 					</Badge>
 				)}
 
-				{allFound && (
+				{hasRed && (
 					<Badge variant="default" className="self-start">
-						All purple spheres found!
+						Red sphere found!
 					</Badge>
 				)}
 			</CardContent>

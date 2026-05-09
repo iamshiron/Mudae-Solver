@@ -3,8 +3,8 @@ import {
 	type Grid,
 	type ProbabilityGrid,
 	GRID_SIZE,
-	TOTAL_PURPLES,
-} from "./types";
+} from "../shared/types";
+import { TOTAL_PURPLES } from "./types";
 
 const STATE_TO_COUNT: Partial<Record<CellState, number>> = {
 	blue: 0,

@@ -1,9 +1,14 @@
 import { useState } from "react";
 import { OuroQuestSolver } from "@/solvers/ouro-quest";
+import { OuroChestSolver } from "@/solvers/ouro-chest";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
-const TABS = [{ id: "ouro-quest", label: "Ouro Quest" }] as const;
+const TABS = [
+	{ id: "ouro-quest", label: "Ouro Quest" },
+	{ id: "ouro-chest", label: "Ouro Chest" },
+] as const;
+
 type TabId = (typeof TABS)[number]["id"];
 
 export function App() {
@@ -11,7 +16,7 @@ export function App() {
 
 	return (
 		<div className="flex min-h-svh flex-col items-center p-4 sm:p-6">
-			<div className="flex w-full max-w-md flex-col gap-3">
+			<div className="w-full max-w-md flex flex-col gap-3">
 				<div className="flex flex-col gap-2">
 					<div className="px-1 text-sm font-medium">Mudae Solvers</div>
 					<div className="flex gap-1">
@@ -30,6 +35,7 @@ export function App() {
 				</div>
 
 				{activeTab === "ouro-quest" && <OuroQuestSolver />}
+				{activeTab === "ouro-chest" && <OuroChestSolver />}
 			</div>
 		</div>
 	);
