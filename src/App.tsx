@@ -16,7 +16,7 @@ export function App() {
 
 	return (
 		<div className="flex min-h-svh flex-col items-center p-4 sm:p-6">
-			<div className="w-full max-w-md flex flex-col gap-3">
+			<div className="w-full max-w-md flex flex-1 flex-col gap-3">
 				<div className="flex flex-col gap-2">
 					<div className="px-1 text-sm font-medium">Mudae Solvers</div>
 					<div className="flex gap-1">
@@ -37,6 +37,14 @@ export function App() {
 				{activeTab === "ouro-quest" && <OuroQuestSolver />}
 				{activeTab === "ouro-chest" && <OuroChestSolver />}
 			</div>
+
+			<footer className="mt-auto w-full max-w-md border-t pt-4 pb-2">
+				<p className="text-center text-sm text-muted-foreground">
+					<span className="font-semibold">Disclaimer:</span> This is a fan-made
+					project and is not affiliated with, endorsed by, or connected to the
+					official Mudae Discord bot or its development team in any way.
+				</p>
+			</footer>
 		</div>
 	);
 }
