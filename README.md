@@ -1,8 +1,8 @@
 # Mudae Solvers
 
-A collection of interactive probability solvers for the [Mudae](https://discord.com/oauth2/authorize?client_id=289069816589262848) Discord bot's Ouro minigames.
+A collection of interactive probability solvers for the Ouro minigames from [Mudae](https://mudae.net/) ([official Discord](https://discord.gg/mudae)) — a Discord bot developed and managed by its own team.
 
-**This is a fan-made project and is not affiliated with, endorsed by, or connected to the official Mudae Discord bot or its development team in any way.**
+**This is an independent, fan-made project. It is not affiliated with, endorsed by, or connected to the official Mudae bot, its developer, or its team.**
 
 ## Solvers
 
