@@ -2,10 +2,12 @@ import { useMemo, useState } from "react";
 import {
 	type CellState,
 	type Grid,
+	type ViewMode,
 	CELL_COLORS,
 	countRevealed,
 	createEmptyGrid,
 } from "../shared/types";
+import { computeEVGrid, findEVRecommendation } from "../shared/ev";
 import { MAX_CLICKS, OURO_CHEST_LABELS } from "./types";
 import { solve } from "./solver";
 import { OuroChestGrid } from "./grid";
@@ -23,8 +25,16 @@ import { ArrowCounterClockwise } from "@phosphor-icons/react";
 
 export function OuroChestSolver() {
 	const [grid, setGrid] = useState<Grid>(createEmptyGrid);
+	const [mode, setMode] = useState<ViewMode>("probability");
 	const result = useMemo(() => solve(grid), [grid]);
 	const clicks = countRevealed(grid);
+
+	const evGrid = useMemo(
+		() => computeEVGrid(result.colorDistributions),
+		[result.colorDistributions],
+	);
+
+	const recommendation = useMemo(() => findEVRecommendation(evGrid), [evGrid]);
 
 	const hasRed = grid.some((row) => row.some((c) => c === "red"));
 
@@ -66,11 +76,31 @@ export function OuroChestSolver() {
 					)}
 				</div>
 
+				<div className="flex items-center gap-1">
+					<Button
+						variant={mode === "probability" ? "secondary" : "ghost"}
+						size="xs"
+						onClick={() => setMode("probability")}
+					>
+						Prob %
+					</Button>
+					<Button
+						variant={mode === "ev" ? "secondary" : "ghost"}
+						size="xs"
+						onClick={() => setMode("ev")}
+					>
+						EV pts
+					</Button>
+				</div>
+
 				<div className="flex justify-center">
 					<OuroChestGrid
 						grid={grid}
 						probabilities={result.probabilities}
-						recommendation={result.recommendation}
+						colorDistributions={result.colorDistributions}
+						evGrid={evGrid}
+						mode={mode}
+						recommendation={recommendation}
 						onCellChange={handleCellChange}
 					/>
 				</div>

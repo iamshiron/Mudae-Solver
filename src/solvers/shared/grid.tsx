@@ -2,6 +2,8 @@ import {
 	type CellState,
 	type Grid,
 	type ProbabilityGrid,
+	type EVGrid,
+	type ViewMode,
 	CELL_COLORS,
 } from "./types";
 import {
@@ -30,6 +32,8 @@ interface SolverGridProps {
 	config: SolverGridConfig;
 	grid: Grid;
 	probabilities: ProbabilityGrid;
+	evGrid: EVGrid;
+	mode: ViewMode;
 	recommendation: [number, number] | null;
 	onCellChange: (row: number, col: number, state: CellState) => void;
 }
@@ -38,10 +42,14 @@ export function SolverGrid({
 	config,
 	grid,
 	probabilities,
+	evGrid,
+	mode,
 	recommendation,
 	onCellChange,
 }: SolverGridProps) {
 	const { states, labels, gridSize, highlightRgb, targetLabel } = config;
+
+	const maxEv = useMemoMaxEv(evGrid);
 
 	return (
 		<div className="grid w-full max-w-[320px] grid-cols-5 gap-2">
@@ -50,6 +58,7 @@ export function SolverGrid({
 				const c = i % gridSize;
 				const state = grid[r][c];
 				const prob = probabilities[r][c];
+				const ev = evGrid[r][c];
 				const isRec = recommendation?.[0] === r && recommendation?.[1] === c;
 				const isUnrevealed = state === "unrevealed";
 
@@ -57,17 +66,20 @@ export function SolverGrid({
 					? { backgroundColor: "#27272A" }
 					: { backgroundColor: CELL_COLORS[state] };
 
-				const probOutline =
-					prob !== null && isUnrevealed
-						? {
-								borderWidth: `${Math.max(1, Math.round(prob * 4))}px`,
-								borderColor: `rgba(${highlightRgb[0]}, ${highlightRgb[1]}, ${highlightRgb[2]}, ${Math.max(prob * 0.9, 0.15)})`,
-							}
-						: { borderWidth: "1px", borderColor: "rgba(255,255,255,0.06)" };
+				const outline = computeOutline(
+					prob,
+					ev,
+					isUnrevealed,
+					mode,
+					highlightRgb,
+					maxEv,
+				);
 
 				const recGlow = isRec
 					? { boxShadow: "0 0 0 2px rgba(245, 158, 11, 0.9)" }
 					: {};
+
+				const displayValue = computeDisplayValue(prob, ev, isUnrevealed, mode);
 
 				return (
 					<DropdownMenu key={i}>
@@ -79,20 +91,18 @@ export function SolverGrid({
 										"flex items-center justify-center p-0 outline-none",
 										isRec && !isUnrevealed && "ring-2 ring-amber-400",
 									)}
-									style={{ ...bgColor, ...probOutline, ...recGlow }}
+									style={{ ...bgColor, ...outline, ...recGlow }}
 								>
-									{prob !== null && isUnrevealed && (
+									{displayValue !== null && (
 										<span className="pointer-events-none text-[0.55rem] font-semibold leading-none text-white/80">
-											{Math.round(prob * 100)}
+											{displayValue}
 										</span>
 									)}
 								</DropdownMenuTrigger>
 							</TooltipTrigger>
 							<TooltipContent side="top" sideOffset={4}>
 								{isUnrevealed
-									? prob !== null
-										? `${Math.round(prob * 100)}% chance of ${targetLabel}`
-										: "Click to set state"
+									? formatTooltip(prob, ev, mode, targetLabel)
 									: labels[state]}
 							</TooltipContent>
 						</Tooltip>
@@ -124,4 +134,77 @@ export function SolverGrid({
 			})}
 		</div>
 	);
+}
+
+function useMemoMaxEv(evGrid: EVGrid): number {
+	let max = 0;
+	for (const row of evGrid) {
+		for (const v of row) {
+			if (v !== null && v > max) max = v;
+		}
+	}
+	return max;
+}
+
+function computeOutline(
+	prob: number | null,
+	ev: number | null,
+	isUnrevealed: boolean,
+	mode: ViewMode,
+	highlightRgb: readonly [number, number, number],
+	maxEv: number,
+): React.CSSProperties {
+	if (!isUnrevealed) {
+		return { borderWidth: "1px", borderColor: "rgba(255,255,255,0.06)" };
+	}
+
+	if (mode === "ev" && ev !== null && maxEv > 0) {
+		const intensity = ev / maxEv;
+		return {
+			borderWidth: `${Math.max(1, Math.round(intensity * 4))}px`,
+			borderColor: `rgba(${highlightRgb[0]}, ${highlightRgb[1]}, ${highlightRgb[2]}, ${Math.max(intensity * 0.9, 0.15)})`,
+		};
+	}
+
+	if (prob !== null) {
+		return {
+			borderWidth: `${Math.max(1, Math.round(prob * 4))}px`,
+			borderColor: `rgba(${highlightRgb[0]}, ${highlightRgb[1]}, ${highlightRgb[2]}, ${Math.max(prob * 0.9, 0.15)})`,
+		};
+	}
+
+	return { borderWidth: "1px", borderColor: "rgba(255,255,255,0.06)" };
+}
+
+function computeDisplayValue(
+	prob: number | null,
+	ev: number | null,
+	isUnrevealed: boolean,
+	mode: ViewMode,
+): string | null {
+	if (!isUnrevealed) return null;
+
+	if (mode === "ev") {
+		if (ev !== null) return Math.round(ev).toString();
+		return null;
+	}
+
+	if (prob !== null) return Math.round(prob * 100).toString();
+	return null;
+}
+
+function formatTooltip(
+	prob: number | null,
+	ev: number | null,
+	mode: ViewMode,
+	targetLabel: string,
+): string {
+	if (mode === "ev") {
+		if (ev !== null) return `~${Math.round(ev)} expected points`;
+		return "Click to set state";
+	}
+
+	if (prob !== null)
+		return `${Math.round(prob * 100)}% chance of ${targetLabel}`;
+	return "Click to set state";
 }

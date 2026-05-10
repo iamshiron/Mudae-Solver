@@ -2,16 +2,17 @@ import {
 	type CellState,
 	type Grid,
 	type ProbabilityGrid,
+	type ColorDistributionGrid,
 	GRID_SIZE,
 } from "../shared/types";
 import { TOTAL_PURPLES } from "./types";
 
-const STATE_TO_COUNT: Partial<Record<CellState, number>> = {
-	blue: 0,
-	teal: 1,
-	green: 2,
-	yellow: 3,
-	orange: 4,
+const COUNT_TO_COLOR: Record<number, CellState> = {
+	0: "blue",
+	1: "teal",
+	2: "green",
+	3: "yellow",
+	4: "orange",
 };
 
 const CELL_COUNT = GRID_SIZE * GRID_SIZE;
@@ -50,8 +51,8 @@ function* combinations(arr: number[], k: number): Generator<number[]> {
 
 export interface SolveResult {
 	probabilities: ProbabilityGrid;
+	colorDistributions: ColorDistributionGrid;
 	validConfigs: number;
-	recommendation: [number, number] | null;
 }
 
 export function solve(grid: Grid): SolveResult {
@@ -65,37 +66,51 @@ export function solve(grid: Grid): SolveResult {
 			const state = grid[r][c];
 			if (state === "purple") {
 				fixedPurples.push(idx);
-			} else if (state in STATE_TO_COUNT) {
-				revealed.push({
-					count: STATE_TO_COUNT[state]!,
-					neighbors: NEIGHBOR_FLAT[idx],
-				});
 			} else {
-				unrevealedIndices.push(idx);
+				const countMap: Partial<Record<CellState, number>> = {
+					blue: 0,
+					teal: 1,
+					green: 2,
+					yellow: 3,
+					orange: 4,
+				};
+				if (state in countMap) {
+					revealed.push({
+						count: countMap[state as CellState]!,
+						neighbors: NEIGHBOR_FLAT[idx],
+					});
+				} else {
+					unrevealedIndices.push(idx);
+				}
 			}
 		}
 	}
 
 	const remainingPurples = TOTAL_PURPLES - fixedPurples.length;
-	const emptyResult: ProbabilityGrid = Array.from({ length: GRID_SIZE }, () =>
-		Array<number | null>(GRID_SIZE).fill(null),
-	);
+
+	const emptyGrid = <T>(fill: T): T[][] =>
+		Array.from({ length: GRID_SIZE }, () =>
+			Array.from<T>({ length: GRID_SIZE }).fill(fill),
+		);
 
 	if (remainingPurples < 0 || remainingPurples > unrevealedIndices.length) {
 		return {
-			probabilities: emptyResult,
+			probabilities: emptyGrid(null),
+			colorDistributions: emptyGrid(null),
 			validConfigs: 0,
-			recommendation: null,
 		};
 	}
 
 	const fixedPurpleSet = new Set(fixedPurples);
 
-	let totalValid = 0;
 	const purpleCounts = new Map<number, number>();
+	const colorCounts = new Map<number, Map<string, number>>();
 	for (const idx of unrevealedIndices) {
 		purpleCounts.set(idx, 0);
+		colorCounts.set(idx, new Map());
 	}
+
+	let totalValid = 0;
 
 	for (const combo of combinations(unrevealedIndices, remainingPurples)) {
 		const currentPurpleSet = new Set([...fixedPurpleSet, ...combo]);
@@ -119,31 +134,41 @@ export function solve(grid: Grid): SolveResult {
 			for (const idx of combo) {
 				purpleCounts.set(idx, (purpleCounts.get(idx) ?? 0) + 1);
 			}
-		}
-	}
-
-	const probabilities: ProbabilityGrid = Array.from({ length: GRID_SIZE }, () =>
-		Array<number | null>(GRID_SIZE).fill(null),
-	);
-
-	let bestProb = -1;
-	let recommendation: [number, number] | null = null;
-
-	for (let r = 0; r < GRID_SIZE; r++) {
-		for (let c = 0; c < GRID_SIZE; c++) {
-			if (grid[r][c] === "unrevealed") {
-				const idx = r * GRID_SIZE + c;
-				const count = purpleCounts.get(idx) ?? 0;
-				const prob = totalValid > 0 ? count / totalValid : 0;
-				probabilities[r][c] = prob;
-
-				if (prob > bestProb) {
-					bestProb = prob;
-					recommendation = [r, c];
+			for (const idx of unrevealedIndices) {
+				const counts = colorCounts.get(idx)!;
+				if (currentPurpleSet.has(idx)) {
+					counts.set("purple", (counts.get("purple") ?? 0) + 1);
+				} else {
+					let neighborPurples = 0;
+					for (const nIdx of NEIGHBOR_FLAT[idx]) {
+						if (currentPurpleSet.has(nIdx)) neighborPurples++;
+					}
+					const color = COUNT_TO_COLOR[neighborPurples] ?? "orange";
+					counts.set(color, (counts.get(color) ?? 0) + 1);
 				}
 			}
 		}
 	}
 
-	return { probabilities, validConfigs: totalValid, recommendation };
+	const probabilities: ProbabilityGrid = emptyGrid(null);
+	const colorDistributions: ColorDistributionGrid = emptyGrid(null);
+
+	for (let r = 0; r < GRID_SIZE; r++) {
+		for (let c = 0; c < GRID_SIZE; c++) {
+			if (grid[r][c] === "unrevealed") {
+				const idx = r * GRID_SIZE + c;
+				const pCount = purpleCounts.get(idx) ?? 0;
+				probabilities[r][c] = totalValid > 0 ? pCount / totalValid : 0;
+
+				const dist: Record<string, number> = {};
+				const counts = colorCounts.get(idx)!;
+				for (const [color, count] of counts) {
+					dist[color] = totalValid > 0 ? count / totalValid : 0;
+				}
+				colorDistributions[r][c] = dist;
+			}
+		}
+	}
+
+	return { probabilities, colorDistributions, validConfigs: totalValid };
 }

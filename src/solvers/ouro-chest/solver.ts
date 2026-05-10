@@ -2,6 +2,7 @@ import {
 	type CellState,
 	type Grid,
 	type ProbabilityGrid,
+	type ColorDistributionGrid,
 	GRID_SIZE,
 } from "../shared/types";
 
@@ -46,16 +47,31 @@ function isConsistent(
 	}
 }
 
+function getColorForPosition(
+	tileR: number,
+	tileC: number,
+	redR: number,
+	redC: number,
+): CellState {
+	if (tileR === redR && tileC === redC) return "red";
+	if (isAdjacent(tileR, tileC, redR, redC)) return "orange";
+	if (isOnDiagonal(tileR, tileC, redR, redC)) return "yellow";
+	if (tileR === redR || tileC === redC) return "green";
+	if (isInLine(tileR, tileC, redR, redC)) return "teal";
+	return "blue";
+}
+
 export interface SolveResult {
 	probabilities: ProbabilityGrid;
+	colorDistributions: ColorDistributionGrid;
 	validPositions: number;
-	recommendation: [number, number] | null;
 }
 
 export function solve(grid: Grid): SolveResult {
-	const emptyResult: ProbabilityGrid = Array.from({ length: GRID_SIZE }, () =>
-		Array<number | null>(GRID_SIZE).fill(null),
-	);
+	const emptyGrid = <T>(fill: T): T[][] =>
+		Array.from({ length: GRID_SIZE }, () =>
+			Array.from<T>({ length: GRID_SIZE }).fill(fill),
+		);
 
 	let foundRed: [number, number] | null = null;
 	for (let r = 0; r < GRID_SIZE; r++) {
@@ -63,9 +79,9 @@ export function solve(grid: Grid): SolveResult {
 			if (grid[r][c] === "red") {
 				if (foundRed !== null) {
 					return {
-						probabilities: emptyResult,
+						probabilities: emptyGrid(null),
+						colorDistributions: emptyGrid(null),
 						validPositions: 0,
-						recommendation: null,
 					};
 				}
 				foundRed = [r, c];
@@ -113,41 +129,39 @@ export function solve(grid: Grid): SolveResult {
 		}
 	}
 
-	const probabilities: ProbabilityGrid = Array.from({ length: GRID_SIZE }, () =>
-		Array<number | null>(GRID_SIZE).fill(null),
-	);
+	const probabilities: ProbabilityGrid = emptyGrid(null);
+	const colorDistributions: ColorDistributionGrid = emptyGrid(null);
 
-	const posCounts = new Map<string, number>();
-	for (const [vr, vc] of validPositions) {
-		const key = `${vr},${vc}`;
-		posCounts.set(key, (posCounts.get(key) ?? 0) + 1);
-	}
+	const total = validPositions.length;
 
 	for (let r = 0; r < GRID_SIZE; r++) {
 		for (let c = 0; c < GRID_SIZE; c++) {
-			if (grid[r][c] === "unrevealed") {
-				const count = posCounts.get(`${r},${c}`) ?? 0;
-				probabilities[r][c] =
-					validPositions.length > 0 ? count / validPositions.length : 0;
-			}
-		}
-	}
+			if (grid[r][c] !== "unrevealed") continue;
 
-	let bestProb = -1;
-	let recommendation: [number, number] | null = null;
+			const counts: Record<string, number> = {};
 
-	for (let r = 0; r < GRID_SIZE; r++) {
-		for (let c = 0; c < GRID_SIZE; c++) {
-			if (probabilities[r][c] !== null && probabilities[r][c]! > bestProb) {
-				bestProb = probabilities[r][c]!;
-				recommendation = [r, c];
+			for (const [vr, vc] of validPositions) {
+				if (vr === r && vc === c) {
+					counts["red"] = (counts["red"] ?? 0) + 1;
+				} else {
+					const color = getColorForPosition(r, c, vr, vc);
+					counts[color] = (counts[color] ?? 0) + 1;
+				}
 			}
+
+			const dist: Record<string, number> = {};
+			for (const [color, count] of Object.entries(counts)) {
+				dist[color] = total > 0 ? count / total : 0;
+			}
+
+			probabilities[r][c] = dist["red"] ?? 0;
+			colorDistributions[r][c] = dist;
 		}
 	}
 
 	return {
 		probabilities,
-		validPositions: validPositions.length,
-		recommendation,
+		colorDistributions,
+		validPositions: total,
 	};
 }
